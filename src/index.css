@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+/* iOS Safe Area Support (iPhone 15 Pro Dynamic Island & Home Indicator) */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-header {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem));
+}
+
+.safe-bottom-nav {
+  bottom: max(1.25rem, calc(0.75rem + env(safe-area-inset-bottom, 0px)));
+}
+
+/* Hide scrollbars completely across all browsers and devices */
+* {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
+  -webkit-tap-highlight-color: transparent;
+}
+
+*::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera, Android Webview, iOS Safari */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+html, body {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  overflow-x: hidden;
+  background-color: #070a11;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

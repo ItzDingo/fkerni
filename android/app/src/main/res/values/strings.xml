@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Fkerni</string>
+    <string name="title_activity_main">Fkerni</string>
+    <string name="package_name">com.dingo.fkerni</string>
+    <string name="custom_url_scheme">com.dingo.fkerni</string>
+</resources>

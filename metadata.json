@@ -1,0 +1,6 @@
+{
+  "name": "Fkerni",
+  "description": "Fkerni Study Schedules - Liquid glass mobile app with weekly study schedules, real-time session countdowns, 30m notifications and 15m alarms, humorous animated greetings, and Supabase cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
