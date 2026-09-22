@@ -30,6 +30,12 @@ jobs:
       - name: Sync Capacitor iOS
         run: npx cap sync ios
 
+      - name: Configure iOS SPM Dependencies
+        run: |
+          sed -i '' '/CapacitorLocalNotifications/d' ios/App/CapApp-SPM/Package.swift || sed -i '/CapacitorLocalNotifications/d' ios/App/CapApp-SPM/Package.swift
+          echo "Updated Package.swift:"
+          cat ios/App/CapApp-SPM/Package.swift
+
       - name: Build iOS App (.app)
         run: |
           cd ios/App

@@ -14,7 +14,7 @@ let isChannelsInitialized = false;
  * Initialize Notification channels on Android devices
  */
 export async function initNotificationService(): Promise<boolean> {
-  if (Capacitor.isNativePlatform()) {
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
     try {
       const permStatus = await LocalNotifications.requestPermissions();
       if (permStatus.display !== 'granted') {
@@ -85,7 +85,7 @@ export async function sendInstantNotification({
   const isAlarm = type === '15m';
   const channelId = isAlarm ? CHANNEL_ALARM_15M : CHANNEL_REMINDER_30M;
 
-  if (Capacitor.isNativePlatform()) {
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android') {
     try {
       await LocalNotifications.schedule({
         notifications: [
@@ -142,7 +142,7 @@ export async function scheduleAllSessionsNotifications(
   sessions: StudySession[],
   settings: NotificationSettings
 ): Promise<void> {
-  if (!Capacitor.isNativePlatform()) return;
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return;
 
   try {
     const pending = await LocalNotifications.getPending();
