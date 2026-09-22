@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Calendar, Sparkles } from 'lucide-react';
 import { StudySession, AppLanguage } from '../types';
 import { getNextUpcomingSession, formatDuration, DAY_LABELS, parseTimeToMinutes, getMinutesNow } from '../utils/timeUtils';
@@ -16,7 +16,7 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
 }) => {
   const [, setTicker] = useState(0);
 
-  // Update countdown every second
+  // Update countdown live every single second
   useEffect(() => {
     const timer = setInterval(() => {
       setTicker((t) => t + 1);
@@ -24,9 +24,8 @@ export const NextSessionCard: React.FC<NextSessionCardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  const nextData = useMemo(() => {
-    return getNextUpcomingSession(sessions);
-  }, [sessions]);
+  // Evaluated live on every second tick
+  const nextData = getNextUpcomingSession(sessions);
 
   const getLabelEtude = (time: string) => {
     if (language === 'ar') return `قراية مع ${time}`;
