@@ -1,15 +1,31 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { StudySession } from '../types';
 import { SUPABASE_CONFIG } from '../config/supabaseConfig';
+import { OPENING_FUNNY_QUOTES } from '../config/customContent';
 
 let supabaseClient: SupabaseClient | null = null;
 let currentUrl = '';
 let currentKey = '';
 let realtimeChannel: RealtimeChannel | null = null;
+let quotesRealtimeChannel: RealtimeChannel | null = null;
 
 // Primary table used by the user's database is 'sessions'
 const PRIMARY_TABLE = 'sessions';
 const FALLBACK_TABLE = 'study_sessions';
+
+// Funny quotes tables
+const QUOTES_PRIMARY_TABLE = 'funny_quotes';
+const QUOTES_FALLBACK_TABLE = 'quotes';
+
+export interface SupabaseQuote {
+  id?: string | number;
+  text: string;
+  emoji?: string;
+  is_active?: boolean;
+  is_pinned?: boolean; // When true, always displays this quote on open!
+  priority?: number;
+  created_at?: string;
+}
 
 export function getSupabaseClient(url?: string, anonKey?: string): SupabaseClient | null {
   const targetUrl =
@@ -246,6 +262,130 @@ export function subscribeToLiveSessions(
     if (realtimeChannel) {
       realtimeChannel.unsubscribe();
       realtimeChannel = null;
+    }
+  };
+}
+
+/**
+ * =======================================================================
+ *  FUNNY QUOTES / WORDS MANAGEMENT (SUPABASE + OFFLINE CACHE)
+ * =======================================================================
+ */
+
+export function getCachedQuotes(): SupabaseQuote[] {
+  const cached = localStorage.getItem('fkerni_cached_quotes');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch {
+      // fallback
+    }
+  }
+  return OPENING_FUNNY_QUOTES.map((q, idx) => ({
+    id: idx + 1,
+    text: q.text,
+    emoji: q.emoji,
+    is_active: true,
+    is_pinned: false
+  }));
+}
+
+export function selectQuoteToDisplay(quotes: SupabaseQuote[]): { text: string; emoji: string } {
+  if (!quotes || quotes.length === 0) {
+    return { text: "m3ndkch etude taw ? myselch 9oum we a9ra chwaya fel dar", emoji: "⏰" };
+  }
+
+  // 1. If there's a pinned quote (is_pinned === true), always display it!
+  const pinned = quotes.find((q) => q.is_pinned === true && q.is_active !== false);
+  if (pinned) {
+    return { text: pinned.text, emoji: pinned.emoji || '🔥' };
+  }
+
+  // 2. Otherwise pick randomly among active quotes
+  const activeQuotes = quotes.filter((q) => q.is_active !== false);
+  const pool = activeQuotes.length > 0 ? activeQuotes : quotes;
+  const picked = pool[Math.floor(Math.random() * pool.length)];
+
+  return { text: picked.text, emoji: picked.emoji || '🔥' };
+}
+
+export async function fetchQuotesFromSupabase(): Promise<SupabaseQuote[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+
+  try {
+    // 1. Try QUOTES_PRIMARY_TABLE ('funny_quotes')
+    let { data, error } = await client
+      .from(QUOTES_PRIMARY_TABLE)
+      .select('*')
+      .order('id', { ascending: true });
+
+    // 2. Fallback to 'quotes'
+    if (error && error.code === 'PGRST205') {
+      const fallback = await client
+        .from(QUOTES_FALLBACK_TABLE)
+        .select('*')
+        .order('id', { ascending: true });
+      data = fallback.data;
+      error = fallback.error;
+    }
+
+    if (error) {
+      console.warn('Could not fetch quotes from Supabase (using offline cache):', error.message);
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      localStorage.setItem('fkerni_cached_quotes', JSON.stringify(data));
+      return data as SupabaseQuote[];
+    }
+
+    return null;
+  } catch (err) {
+    console.warn('Network error fetching quotes, using offline cache:', err);
+    return null;
+  }
+}
+
+export function subscribeToLiveQuotes(
+  onQuotesChange: (quotes: SupabaseQuote[]) => void
+): () => void {
+  const client = getSupabaseClient();
+  if (!client) return () => {};
+
+  if (quotesRealtimeChannel) {
+    quotesRealtimeChannel.unsubscribe();
+    quotesRealtimeChannel = null;
+  }
+
+  const handleRefresh = async () => {
+    const updated = await fetchQuotesFromSupabase();
+    if (updated && updated.length > 0) {
+      onQuotesChange(updated);
+    }
+  };
+
+  try {
+    quotesRealtimeChannel = client
+      .channel('public:quotes-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: QUOTES_PRIMARY_TABLE }, () => {
+        handleRefresh();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: QUOTES_FALLBACK_TABLE }, () => {
+        handleRefresh();
+      })
+      .subscribe();
+  } catch {
+    // Ignore realtime error
+  }
+
+  return () => {
+    if (quotesRealtimeChannel) {
+      quotesRealtimeChannel.unsubscribe();
+      quotesRealtimeChannel = null;
     }
   };
 }

@@ -13,7 +13,11 @@ import { stopAlarm15m } from './utils/audio';
 import {
   fetchSessionsFromSupabase,
   syncSessionToSupabase,
-  subscribeToLiveSessions
+  subscribeToLiveSessions,
+  getCachedQuotes,
+  selectQuoteToDisplay,
+  fetchQuotesFromSupabase,
+  subscribeToLiveQuotes
 } from './services/supabase';
 import {
   initNotificationService,
@@ -81,9 +85,14 @@ export default function App() {
     };
   });
 
-  // 4. Random funny quote
-  const [openingQuote] = useState<{ text: string; emoji: string }>(() => {
-    return getRandomFunnyQuote();
+  // 4. Random funny quote or first-time welcome message
+  const [openingQuote, setOpeningQuote] = useState<{ text: string; emoji: string }>(() => {
+    const hasOpenedBefore = localStorage.getItem('fkerni_has_opened_before');
+    if (!hasOpenedBefore) {
+      return { text: "Ahla bMallouka 😊", emoji: "👋" };
+    }
+    const cachedQuotes = getCachedQuotes();
+    return selectQuoteToDisplay(cachedQuotes);
   });
 
   // 5. Modals
@@ -105,14 +114,14 @@ export default function App() {
   const notified30mRef = useRef<Set<string>>(new Set());
   const alarmed15mRef = useRef<Set<string>>(new Set());
 
-  // 6. Initial Boot: Live Supabase Fetch + Realtime Subscription + Native Notifications Init
+  // 6. Initial Boot: Live Supabase Fetch (Sessions & Quotes) + Realtime + Auto-sync on Connection
   useEffect(() => {
     localStorage.setItem('fkerni_last_visit', Date.now().toString());
 
     // Initialize notification channels & request permissions
     initNotificationService();
 
-    // Fetch live sessions from Supabase
+    // Fetch live sessions from Supabase and cache locally
     fetchSessionsFromSupabase().then((data) => {
       if (data && data.length > 0) {
         setSessions(data);
@@ -121,8 +130,17 @@ export default function App() {
       }
     });
 
-    // Subscribe to live realtime changes from Supabase
-    const unsubscribe = subscribeToLiveSessions((updated) => {
+    // Fetch live quotes from Supabase and cache locally
+    fetchQuotesFromSupabase().then((quotes) => {
+      if (quotes && quotes.length > 0) {
+        if (localStorage.getItem('fkerni_has_opened_before')) {
+          setOpeningQuote(selectQuoteToDisplay(quotes));
+        }
+      }
+    });
+
+    // Subscribe to live realtime changes from Supabase (sessions)
+    const unsubscribeSessions = subscribeToLiveSessions((updated) => {
       if (updated && updated.length > 0) {
         setSessions(updated);
         localStorage.setItem('fkerni_sessions', JSON.stringify(updated));
@@ -130,8 +148,42 @@ export default function App() {
       }
     });
 
+    // Subscribe to live realtime changes from Supabase (funny quotes)
+    const unsubscribeQuotes = subscribeToLiveQuotes((updatedQuotes) => {
+      if (updatedQuotes && updatedQuotes.length > 0) {
+        localStorage.setItem('fkerni_cached_quotes', JSON.stringify(updatedQuotes));
+        if (localStorage.getItem('fkerni_has_opened_before')) {
+          setOpeningQuote(selectQuoteToDisplay(updatedQuotes));
+        }
+      }
+    });
+
+    // Auto-sync whenever internet or Wi-Fi reconnects
+    const handleOnlineSync = async () => {
+      console.log('🌐 Online connection restored! Syncing data with Supabase...');
+      const freshSessions = await fetchSessionsFromSupabase();
+      if (freshSessions && freshSessions.length > 0) {
+        setSessions(freshSessions);
+        localStorage.setItem('fkerni_sessions', JSON.stringify(freshSessions));
+        setIsSupabaseLive(true);
+      }
+      const freshQuotes = await fetchQuotesFromSupabase();
+      if (freshQuotes && freshQuotes.length > 0) {
+        localStorage.setItem('fkerni_cached_quotes', JSON.stringify(freshQuotes));
+        if (localStorage.getItem('fkerni_has_opened_before')) {
+          setOpeningQuote(selectQuoteToDisplay(freshQuotes));
+        }
+      }
+    };
+
+    window.addEventListener('online', handleOnlineSync);
+    window.addEventListener('focus', handleOnlineSync);
+
     return () => {
-      unsubscribe();
+      unsubscribeSessions();
+      unsubscribeQuotes();
+      window.removeEventListener('online', handleOnlineSync);
+      window.removeEventListener('focus', handleOnlineSync);
     };
   }, []);
 
@@ -280,7 +332,10 @@ export default function App() {
         {showIntroOverlay && (
           <OpeningIntroOverlay
             quote={openingQuote}
-            onEnterApp={() => setShowIntroOverlay(false)}
+            onEnterApp={() => {
+              localStorage.setItem('fkerni_has_opened_before', 'true');
+              setShowIntroOverlay(false);
+            }}
           />
         )}
       </AnimatePresence>
