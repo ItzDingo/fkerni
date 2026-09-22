@@ -7,7 +7,7 @@ import {
   NotificationSettings
 } from './types';
 import { INITIAL_SCHEDULE } from './data/defaultSchedule';
-import { getRandomFunnyQuote, ALERT_MESSAGES } from './config/customContent';
+import { ALERT_MESSAGES } from './config/customContent';
 import { getTodayDayOfWeek, parseTimeToMinutes, getMinutesNow, shouldPerformSundayMidnightReset } from './utils/timeUtils';
 import { stopAlarm15m } from './utils/audio';
 import {
@@ -85,8 +85,8 @@ export default function App() {
     };
   });
 
-  // 4. Random funny quote or first-time welcome message
-  const [openingQuote, setOpeningQuote] = useState<{ text: string; emoji: string }>(() => {
+  // 4. Opening quote (selected ONCE on app open: welcome message on first open, Supabase/cached quote after)
+  const [openingQuote] = useState<{ text: string; emoji: string }>(() => {
     const hasOpenedBefore = localStorage.getItem('fkerni_has_opened_before');
     if (!hasOpenedBefore) {
       return { text: "Ahla bMallouka 😊", emoji: "👋" };
@@ -130,12 +130,10 @@ export default function App() {
       }
     });
 
-    // Fetch live quotes from Supabase and cache locally
+    // Fetch live quotes from Supabase and silently cache locally for future app launches
     fetchQuotesFromSupabase().then((quotes) => {
       if (quotes && quotes.length > 0) {
-        if (localStorage.getItem('fkerni_has_opened_before')) {
-          setOpeningQuote(selectQuoteToDisplay(quotes));
-        }
+        localStorage.setItem('fkerni_cached_quotes', JSON.stringify(quotes));
       }
     });
 
@@ -152,9 +150,6 @@ export default function App() {
     const unsubscribeQuotes = subscribeToLiveQuotes((updatedQuotes) => {
       if (updatedQuotes && updatedQuotes.length > 0) {
         localStorage.setItem('fkerni_cached_quotes', JSON.stringify(updatedQuotes));
-        if (localStorage.getItem('fkerni_has_opened_before')) {
-          setOpeningQuote(selectQuoteToDisplay(updatedQuotes));
-        }
       }
     });
 
@@ -170,9 +165,6 @@ export default function App() {
       const freshQuotes = await fetchQuotesFromSupabase();
       if (freshQuotes && freshQuotes.length > 0) {
         localStorage.setItem('fkerni_cached_quotes', JSON.stringify(freshQuotes));
-        if (localStorage.getItem('fkerni_has_opened_before')) {
-          setOpeningQuote(selectQuoteToDisplay(freshQuotes));
-        }
       }
     };
 

@@ -1,7 +1,6 @@
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { StudySession } from '../types';
 import { SUPABASE_CONFIG } from '../config/supabaseConfig';
-import { OPENING_FUNNY_QUOTES } from '../config/customContent';
 
 let supabaseClient: SupabaseClient | null = null;
 let currentUrl = '';
@@ -272,6 +271,22 @@ export function subscribeToLiveSessions(
  * =======================================================================
  */
 
+const INITIAL_OFFLINE_QUOTES: SupabaseQuote[] = [
+  { id: 1, text: "m3ndkch etude taw ? myselch 9oum we a9ra chwaya fel dar", emoji: "⏰", is_active: true, is_pinned: false },
+  { id: 2, text: "Sa7tek aham men ay 7aja o5ra dima tfaker okk ?", emoji: "💗", is_active: true, is_pinned: false },
+  { id: 3, text: "El 9raya 3morha makent b7r9an l3sab mrigl ?", emoji: "📔", is_active: true, is_pinned: false },
+  { id: 4, text: "w9t t7es ro7k t3ebt a3ml pause s8yra makench rani chn5othk", emoji: "😠", is_active: true, is_pinned: false },
+  { id: 5, text: "Aya el 7amdelah 3lik ki tfakert w7dek w 7allit", emoji: "🎉", is_active: true, is_pinned: false },
+  { id: 6, text: "Chouf chkoun jeeeeee hani seket ena wakahw", emoji: "🥱", is_active: true, is_pinned: false },
+  { id: 7, text: "9otli mela 5ayfa mel bac ? hhhhh ena n2kdlk eli houwa el 3ks", emoji: "😁", is_active: true, is_pinned: false },
+  { id: 8, text: "Jme3t el Bac sience wouuh wouuuh ", emoji: "😩", is_active: true, is_pinned: false },
+  { id: 9, text: "Temchich tnsa el w9t ranii walllllh", emoji: "🔪", is_active: true, is_pinned: false },
+  { id: 10, text: "N7ebk tbiba 3ad maw ? allh 8aleb n7eb ndewi blech", emoji: "😛", is_active: true, is_pinned: false },
+  { id: 11, text: "Taw enti tkrahni 9adech men 1 l 10 ?", emoji: "🙂", is_active: true, is_pinned: false },
+  { id: 12, text: "Chah Chah toul 3lina akther 3ad Netw7ch rani", emoji: "🥺", is_active: true, is_pinned: false },
+  { id: 13, text: "mar7be beli takrahni", emoji: "🙋‍♂️", is_active: true, is_pinned: false }
+];
+
 export function getCachedQuotes(): SupabaseQuote[] {
   const cached = localStorage.getItem('fkerni_cached_quotes');
   if (cached) {
@@ -284,13 +299,7 @@ export function getCachedQuotes(): SupabaseQuote[] {
       // fallback
     }
   }
-  return OPENING_FUNNY_QUOTES.map((q, idx) => ({
-    id: idx + 1,
-    text: q.text,
-    emoji: q.emoji,
-    is_active: true,
-    is_pinned: false
-  }));
+  return INITIAL_OFFLINE_QUOTES;
 }
 
 export function selectQuoteToDisplay(quotes: SupabaseQuote[]): { text: string; emoji: string } {
